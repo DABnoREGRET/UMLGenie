@@ -69,7 +69,6 @@ class AIService:
             A-->B
         
         - Mermaid Config Example:
-          %%{{init: {{'theme': 'base', 'themeVariables': {{ 'primaryColor': '#ff0000'}}}}}}%%
           graph TD
             A-->B
         
