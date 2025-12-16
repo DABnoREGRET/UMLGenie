@@ -198,7 +198,9 @@ class NLGenFeature(Feature):
                         status.write("ℹ️ Standard generation.")
                     
                     status.write("📝 Drafting UML...")
-                    response_text = self.ai_service.generate_uml(f"Generate a UML diagram for: {user_prompt}", context, preferred_language=pref_arg)
+                    # Pass history (excluding current user prompt which is at -1)
+                    history_to_pass = st.session_state.messages[:-1]
+                    response_text = self.ai_service.generate_uml(f"Generate a UML diagram for: {user_prompt}", context, preferred_language=pref_arg, history=history_to_pass)
                     status.update(label="Done!", state="complete", expanded=False)
                 
                 st.markdown(response_text)
