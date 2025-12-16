@@ -1,0 +1,12 @@
+streamlit
+openai
+google-generativeai
+sentence-transformers
+faiss-cpu
+numpy
+requests
+beautifulsoup4
+pypdf
+markdownify
+duckduckgo-search
+sqlalchemy

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Environment variables
+.env
+
+# RAG Data
+bins/
+*_index.bin
+*_chunks.pkl
+raw_data/
+docs/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
