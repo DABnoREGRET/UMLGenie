@@ -52,7 +52,11 @@ class AIService:
            - **PlantUML**: Start DIRECTLY with `@startuml`. Do **NOT** wrap in markdown blocks.
         2. If the user asks a question about UML concepts, explain it.
         3. Can mix text with code, but keep the code clean and strictly valid.
-        4. PREFER Mermaid JS for sequence diagrams and flowcharts. PREFER PlantUML for component, deployment, and complex class diagrams (Unless user specified a language).
+        4. **Language Preferences (Auto Mode)**:
+           - **Use Mermaid** for: Sequence, Flowchart, Class, State, ERD, User Journey, Gantt, Pie.
+           - **Use PlantUML** for: Use Case, Component, Deployment, Object, Timing, Network/Architecture.
+           - If unsure, default to PlantUML.
+        5. **Simplicity Level**: REQUIRED: Keep diagrams **SIMPLE, HIGH-LEVEL, and MINIMAL** by default. Do not add excessive details, attributes, or methods unless the user explicitly requests a "detailed" or "complex" diagram. Focus on the core relationships.
         
         STRICT FORMATTING RULES:
         - **NO** inline enums like `category: enum {{Pizza, Drink}}`. Use standard class definitions or notes for Enums.
