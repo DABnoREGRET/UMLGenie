@@ -31,7 +31,10 @@ class AIService:
         image.save(buffered, format="JPEG")
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-    def generate_uml(self, prompt, context="", preferred_language="auto"):
+    def generate_uml(self, prompt, context="", preferred_language="auto", history=None):
+        if history is None:
+            history = []
+            
         # Build instructions based on language
         lang_instruction = "Generate VALID Mermaid JS code (` ```mermaid `) or PlantUML code (`@startuml`...`@enduml`)."
         if preferred_language == "PlantUML":
@@ -39,12 +42,7 @@ class AIService:
         elif preferred_language == "Mermaid":
             lang_instruction = "Generate **Mermaid JS** code ONLY (inside ```mermaid block). Do NOT use PlantUML."
 
-        full_prompt = f"""You are a UML & Software Architecture Expert.
-        
-        User Request: {prompt}
-        
-        Context from Docs (RAG):
-        {context}
+        system_instruction = f"""You are a UML & Software Architecture Expert.
         
         Instructions:
         1. {lang_instruction}
@@ -82,17 +80,44 @@ class AIService:
           @enduml
         """
         
+        # User input block with RAG context
+        user_block = f"""User Request: {prompt}
+        
+        Context from Docs (RAG):
+        {context}
+        """
+
         if self.provider == "Google Gemini":
+            # For Gemini, we simulate history by appending it to the prompt text (since we use generate_content)
+            # or we could use start_chat. Stateless approach: Formatting history as string.
+            history_text = ""
+            for msg in history:
+                role = "User" if msg['role'] == 'user' else "Model"
+                history_text += f"{role}: {msg['content']}\n\n"
+            
+            final_prompt = f"{system_instruction}\n\nChat History:\n{history_text}\n\n{user_block}"
+            
             model = genai.GenerativeModel(self.model_name)
-            response = model.generate_content(full_prompt)
+            response = model.generate_content(final_prompt)
             return response.text
+            
         elif self.provider == "OpenRouter":
             if not self.openrouter_client:
                 return "Error: OpenRouter Client not initialized."
             
+            # Construct messages list
+            messages = [{"role": "system", "content": system_instruction}]
+            # Add History
+            for msg in history:
+                # OpenRouter expects 'user' or 'assistant'
+                messages.append({"role": msg["role"], "content": msg["content"]})
+            
+            # Add current request
+            messages.append({"role": "user", "content": user_block})
+            
             response = self.openrouter_client.chat.completions.create(
                 model=self.model_name,
-                messages=[{"role": "user", "content": full_prompt}]
+                messages=messages
             )
             return response.choices[0].message.content
         return "Error: Invalid Provider"
