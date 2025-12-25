@@ -122,32 +122,65 @@ class AIService:
             return response.choices[0].message.content
         return "Error: Invalid Provider"
 
-    def analyze_image(self, prompt, image):
+    def analyze_media(self, prompt, file_data, mime_type):
+        """
+        Analyzes media (Image, PDF, Text) using the configured provider.
+        file_data: bytes of the file
+        mime_type: string (e.g. 'image/png', 'application/pdf')
+        """
         if self.provider == "Google Gemini":
-            model = genai.GenerativeModel("gemini-2.0-flash") # Vision capable
-            response = model.generate_content([prompt, image])
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            
+            # Gemini accepts parts with mime_type and data
+            content_part = {
+                "mime_type": mime_type,
+                "data": file_data
+            }
+            
+            response = model.generate_content([prompt, content_part])
             return response.text
+            
         elif self.provider == "OpenRouter":
             if not self.openrouter_client:
                 return "Error: OpenRouter Client not initialized."
-                
-            base64_image = self._image_to_base64(image)
-            response = self.openrouter_client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}"
+
+            # OpenRouter (mostly Vision/Text)
+            # If it's an image, use standard vision payload
+            if mime_type.startswith("image/"):
+                base64_image = base64.b64encode(file_data).decode("utf-8")
+                response = self.openrouter_client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{mime_type};base64,{base64_image}"
+                                    },
                                 },
-                            },
-                        ],
-                    }
-                ],
-            )
-            return response.choices[0].message.content
+                            ],
+                        }
+                    ],
+                )
+                return response.choices[0].message.content
+            
+            # If text/code, decode and pass as text
+            elif mime_type.startswith("text/") or mime_type in ["application/json", "application/javascript"]:
+                try:
+                    text_content = file_data.decode("utf-8")
+                    full_prompt = f"{prompt}\n\nAttached Content ({mime_type}):\n{text_content}"
+                    response = self.openrouter_client.chat.completions.create(
+                        model=self.model_name,
+                        messages=[{"role": "user", "content": full_prompt}]
+                    )
+                    return response.choices[0].message.content
+                except Exception as e:
+                    return f"Error processing text file: {str(e)}"
+            
+            else:
+                 return f"Error: OpenRouter provider currently only supports Images and Text files. PDF/Other not supported via direct upload yet (Provider: {self.provider})."
+
         return "Error: Invalid Provider"
