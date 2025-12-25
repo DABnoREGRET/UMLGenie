@@ -15,16 +15,29 @@ class ScannerFeature(Feature):
     def render(self):
         st.header("🔍 Smart UML Scanner")
         st.warning("⚠️ Note: This feature requires an AI model with Vision capabilities (e.g., Gemini 1.5 Pro/Flash, GPT-4o).")
-        uploaded_file = st.file_uploader("Upload UML Diagram", type=["png", "jpg", "jpeg", "webp"])
+        uploaded_file = st.file_uploader("Upload Diagram/Docs", type=["png", "jpg", "jpeg", "webp", "pdf", "csv", "txt", "md"])
         
         if uploaded_file and self.ai_service.is_configured():
-            image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Diagram", use_container_width=True)
+            # Show preview if image
+            if uploaded_file.type.startswith("image"):
+                image = Image.open(uploaded_file)
+                st.image(image, caption="Uploaded Diagram", use_container_width=True)
+            else:
+                 st.info(f"File uploaded: {uploaded_file.name} ({uploaded_file.type})")
             
-            if st.button("Analyze Diagram"):
+            if st.button("Analyze & Convert"):
                 with st.spinner("Analyzing..."):
-                    prompt = "Analyze this UML diagram. Explain the relationships, identify patterns, and spot any potential design issues."
-                    response_text = self.ai_service.analyze_image(prompt, image)
+                    prompt = """
+                    Analyze this file. 
+                    1. Explain the architecture/logic in detail.
+                    2. Generate a valid UML diagram (Mermaid JS or PlantUML) representing the content.
+                    3. Output the explanation first, then the code block.
+                    """
+                    
+                    file_bytes = uploaded_file.getvalue()
+                    mime_type = uploaded_file.type
+                    
+                    response_text = self.ai_service.analyze_media(prompt, file_bytes, mime_type)
                     st.markdown(response_text)
 
 class EditorFeature(Feature):
@@ -32,6 +45,11 @@ class EditorFeature(Feature):
     def render(self):
         st.header("✏️ Visual Editor")
         
+        # Language Toggle
+        col_lang, col_rest = st.columns([1, 2])
+        with col_lang:
+            mode = st.radio("Language", ["Auto", "Mermaid", "PlantUML"], horizontal=True)
+
         if "editor_code" not in st.session_state:
             st.session_state.editor_code = "classDiagram\n    class User {\n        +String username\n        +String password\n        +login()\n    }"
             
@@ -63,7 +81,12 @@ class EditorFeature(Feature):
                             status.write("ℹ️ Standard Mode active.")
                         
                         status.write("🧠 Generating Fix...")
-                        response = self.ai_service.generate_uml(f"Fix this UML code to be valid:\n{code}", ctx)
+                        # Pass explicit language preference if not Auto
+                        pref = "auto"
+                        if mode == "Mermaid": pref = "Mermaid"
+                        elif mode == "PlantUML": pref = "PlantUML"
+                        
+                        response = self.ai_service.generate_uml(f"Fix this UML code to be valid:\n{code}", ctx, preferred_language=pref)
                         
                         if response:
                              # Separate Code from Explanation
@@ -100,10 +123,23 @@ class EditorFeature(Feature):
         
         with col2:
             st.subheader("Preview")
+            
+            # Helper to determine actual type for rendering
+            is_plantuml = "@startuml" in code or mode == "PlantUML"
+            is_mermaid = any(x in code for x in ["classDiagram", "sequenceDiagram", "graph", "---", "%%"]) or mode == "Mermaid"
+            
+            # Priority: Detect -> Mode
             if "@startuml" in code:
+                is_plantuml = True
+                is_mermaid = False
+            elif any(x in code for x in ["classDiagram", "sequenceDiagram", "graph "]):
+                is_mermaid = True
+                is_plantuml = False
+
+            if is_plantuml:
                 url = uml_utils.get_plantuml_url(code)
-                st.image(url, caption="Preview", use_container_width=True)
-            elif "classDiagram" in code or "sequenceDiagram" in code or "graph" in code:
+                st.image(url, caption="Preview (PlantUML)", use_container_width=True)
+            elif is_mermaid:
                  # Assume Mermaid - FORCE LOCAL
                  import streamlit.components.v1 as components
                  html_code = uml_utils.render_mermaid_html(code)
