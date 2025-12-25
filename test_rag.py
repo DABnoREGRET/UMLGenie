@@ -33,6 +33,12 @@ def test_rag():
     print(f"Query: 'Mermaid flowchart' -> Routed to: {mermaid_branch}")
     assert mermaid_branch == "mermaid"
 
+    print("\n--- Test 4: Auto Query (Multi-Branch Safety) ---")
+    # No explicit language: should still return something reasonable and not crash
+    results = rag.query("How do I include a library and set theme?", branch=None)
+    print(f"Results: {len(results)}")
+    assert isinstance(results, list)
+
     print("\n✅ Verification Complete")
 
 if __name__ == "__main__":

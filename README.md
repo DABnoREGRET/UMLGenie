@@ -41,7 +41,24 @@ UMLGenie is an intelligent, AI-driven UML diagram generation and editing tool. I
     ```bash
     python ingest_docs.py
     ```
-    *This may take a few minutes as it scrapes web docs and processes PDFs.*
+    *This may take a few minutes as it scrapes web docs (Mermaid + PlantUML official docs + PlantUML stdlib/C4 + UML theory) and processes PDFs (PlantUML language reference + OMG UML).*
+
+### Embedding model + device (fixing CUDA out-of-memory)
+
+If you see a `torch.OutOfMemoryError: CUDA out of memory`, your GPU is too small for the embedding model. By default, UMLGenie uses a smaller embedding model and will prefer CPU on small GPUs.
+
+You can control embeddings via environment variables:
+
+- `UMLGENIE_EMBED_MODEL`: embedding model name (default: `Qwen/Qwen3-Embedding-0.6B`)
+- `UMLGENIE_EMBED_DEVICE`: `auto` (default) / `cpu` / `cuda`
+- `UMLGENIE_EMBED_BATCH_SIZE`: encoding batch size (default: `8`)
+
+On Windows (cmd.exe), to force CPU:
+
+```bat
+set UMLGENIE_EMBED_DEVICE=cpu
+python ingest_docs.py
+```
 
 2.  **Run the Application**:
     ```bash
